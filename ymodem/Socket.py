@@ -802,15 +802,19 @@ class ModemSocket(Channel):
                     # invalid header: wrong sequence
                     else:
                         # skip this packet
-                        self.logger.warning("[Receiver]: Wrong sequence, drop the whole packet.")
+                        self.logger.warning(f"[Receiver]: Wrong sequence ({seq1}, {seq2}, {sequence}), drop the whole packet.") 
                         self.read(packet_size + 1 + crc)
+                        # if seq1==seq2 and (seq1+1 % 0x100) == sequence:
+                        #     # Seq1 and seq2 (remote) are one-behind, meaning our ack got lost. Ack this packet we read and mark received, though really we already got it.
+                        #     received=True
+                        #     c = self._write_and_wait(ACK, [SOH, STX, CAN], 5)
 
                     if (self.protocol_type == ProtocolType.XMODEM or self.protocol_subtype == ProtocolSubType.YMODEM_BATCH_FILE_TRANSMISSION) and not received:
                         if retries < 10:
                             # retransmisstion
                             self.logger.warning("[Receiver]: Send a request for retransmission.")
                             self._purge()
-                            c = self._write_and_wait(NAK, [SOH, STX, CAN])
+                            c = self._write_and_wait(NAK, [SOH, STX, CAN], 5)
                             self.logger.debug("[Receiver]: NAK ->")
                             retries += 1
                         else:

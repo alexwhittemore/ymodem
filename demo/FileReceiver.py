@@ -4,6 +4,9 @@ import os
 import serial
 import sys
 import time
+import subprocess
+import random
+random.seed()
 
 from ymodem.Protocol import ProtocolType
 from ymodem.Socket import ModemSocket
@@ -31,32 +34,48 @@ class TaskProgressBar:
         print(f"\r{task_index} - {task_name} {progress:.2f}% [{a}->{b}]{cost:.2f}s", end="")
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
+    log = logging.getLogger('__main__')
+    # logging.basicConfig(level=logging.INFO, format='%(message)s')
     
     serial_io = serial.Serial()
-    serial_io.port = "COM2"
-    serial_io.baudrate = "115200"
+    serial_io.port = "/dev/ttyAMA0"
+    serial_io.baudrate = "2000000"
     serial_io.parity = "N"
     serial_io.bytesize = 8
     serial_io.stopbits = 1
     serial_io.timeout = 2
 
     try:
+        subprocess.run(["sudo", "systemctl", "stop", "serial-getty@ttyAMA0"])
+        subprocess.run(["sudo", "chmod", "666", "/dev/ttyAMA0"])
         serial_io.open()
+        serial_io.flush()
     except Exception as e:
         raise Exception("Failed to open serial port!")
 
-    def read(size, timeout = 3):
+    # Create up to 5 failures with a 1-in-100 chance on any read.
+    failcount = 0
+    def read(size, timeout = 10):
+        global failcount
         serial_io.timeout = timeout
-        return serial_io.read(size)
+        if failcount<0 and random.randint(0,100) == 5:
+            failcount +=1
+            data_in = serial_io.read(size)
+            data = bytearray(data_in)
+            data[0] = ord('0')
+            log.debug(f"Munched data on {size} byte read, failcount {failcount}, {data_in} to {bytes(data)}")
+            return bytes(data)
+        else:
+            return serial_io.read(size)
 
-    def write(data, timeout = 3):
+    def write(data, timeout = 10):
         serial_io.write_timeout = timeout
         serial_io.write(data)
         serial_io.flush()
         return
     
-    receiver = ModemSocket(read, write, ProtocolType.YMODEM)
+    receiver = ModemSocket(read, write, ProtocolType.YMODEM, )
     # receiver = ModemSocket(read, write, ProtocolType.YMODEM, ['g'])
 
     os.chdir(sys.path[0])
@@ -64,4 +83,6 @@ if __name__ == '__main__':
     progress_bar = TaskProgressBar()
     received = receiver.recv(folder_path, progress_bar.show)
 
+    print(f"Failcount: {failcount}")
     serial_io.close()
+    subprocess.run(["sudo", "systemctl", "start", "serial-getty@ttyAMA0"])
