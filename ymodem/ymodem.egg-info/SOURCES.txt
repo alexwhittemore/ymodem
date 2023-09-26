@@ -1,5 +1,0 @@
-setup.py
-ymodem.egg-info/PKG-INFO
-ymodem.egg-info/SOURCES.txt
-ymodem.egg-info/dependency_links.txt
-ymodem.egg-info/top_level.txt

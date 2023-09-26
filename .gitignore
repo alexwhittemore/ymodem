@@ -1,2 +1,7 @@
 __pycache__
 demo/remote/*
+# Generated setup files
+ymodem.egg-info/
+# VSCode files
+launch.json
+settings.json
