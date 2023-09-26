@@ -33,11 +33,12 @@ class TaskProgressBar:
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
+    # logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     serial_io = serial.Serial()
-    serial_io.port = "COM1"
-    serial_io.baudrate = "115200"
+    serial_io.port = "COM6"
+    serial_io.baudrate = "2000000"
     serial_io.parity = "N"
     serial_io.bytesize = 8
     serial_io.stopbits = 1
@@ -45,15 +46,23 @@ if __name__ == '__main__':
 
     try:
         serial_io.open()
+        serial_io.flush()
     except Exception as e:
         raise Exception("Failed to open serial port!")
     
-    def read(size, timeout = 3):
+    def read(size, timeout = 10):
         serial_io.timeout = timeout
         return serial_io.read(size)
 
-    def write(data, timeout = 3):
+    txcount = 0
+    def write(data, timeout = 10):
+        global txcount
         serial_io.write_timeout = timeout
+        # txcount += 1
+        if txcount == 300:
+            data = bytearray(data)
+            data[0] = 0
+            data = bytes(data)
         serial_io.write(data)
         serial_io.flush()
         return
@@ -67,5 +76,6 @@ if __name__ == '__main__':
     file_path3 = os.path.abspath('local/sample3.stl')
     progress_bar = TaskProgressBar()
     sender.send([file_path1, file_path2, file_path3], progress_bar.show)
+    # sender.send([file_path1], progress_bar.show)
 
     serial_io.close()
